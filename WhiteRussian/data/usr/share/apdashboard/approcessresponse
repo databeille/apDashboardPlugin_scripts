@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# Author: Philippe April <philippe@philippeapril.com>
+# Date: August 18, 2010
+
+if [ "$(grep -l 'HTTP/1.0 200 OK' $1)" = "" ]; then
+  exit
+fi
+
+echo 0 > /tmp/reboot_router
+
+cat $1 | while read LINE; do
+  name="$(echo $LINE | awk -F'|' '{print $1}')"
+  case "$name" in
+    CONFIG_WIRELESS_ESSID)
+      SSID="$(echo $LINE | awk -F'|' '{print $2}')"
+      if [ "$(nvram get wl0_ssid)" != "$SSID" ]; then
+        nvram set wl0_ssid="$SSID"
+        nvram commit
+        echo 1 > /tmp/reboot_router
+      fi
+      ;;
+    CONFIG_WIRELESS_CHANNEL)
+      CHANNEL="$(echo $LINE | awk -F'|' '{print $2}')"
+      if [ "$(nvram get wl0_channel)" != "$CHANNEL" ]; then
+        nvram set wl0_channel="$CHANNEL"
+        nvram commit
+        echo 1 > /tmp/reboot_router
+      fi
+      ;;
+    ACTION_RESTART_WIFIDOG)
+      wdctl stop
+      sleep 5
+      wdctl start
+      ;;
+    ACTION_REBOOT)
+      reboot
+      ;;
+  esac
+done
+
+REBOOT_ROUTER=$(cat /tmp/reboot_router)
+
+if [ $REBOOT_ROUTER -eq 1 ]; then
+  reboot
+fi
+

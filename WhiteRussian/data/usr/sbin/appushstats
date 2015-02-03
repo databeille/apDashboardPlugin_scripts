@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Author: Philippe April <philippe@philippeapril.com>
+# Date: August 18, 2010
+
+WIFIDOG_IF=$(grep 'GatewayInterface' /etc/wifidog.conf | grep -v ^# | awk '{print $2}')
+WIFIDOG_MAC=$(ifconfig $WIFIDOG_IF | grep HWaddr | awk '{print $NF}' | sed 's/://g' | tr '[a-z]' '[A-Z]')
+DASHBOARD_URL=$(grep "option url" /etc/config/apdashboard | awk '{print $3}' | sed 's/"//g' | sed "s/'//g")
+DASHBOARD_HOST=$(echo $DASHBOARD_URL | awk -F/ '{print $3}')                                               
+DASHBOARD_PATH=$(echo $DASHBOARD_URL | sed "s/http:\/\/$DASHBOARD_HOST//")                                 
+DASHBOARD_PATH="$DASHBOARD_PATH/status?gw_id=$WIFIDOG_MAC"          
+
+DATA=$(/usr/share/apdashboard/apgatherstats)
+LENGTH=$(echo $DATA | wc -c)
+
+nc "$DASHBOARD_HOST" 80 > /tmp/apdashboardresponse <<EOF
+POST $DASHBOARD_PATH HTTP/1.0
+Content-Type: text/xml
+Content-Length: $LENGTH
+
+$DATA
+EOF
+
+/usr/share/apdashboard/approcessresponse /tmp/apdashboardresponse
+rm -f /tmp/apdashboardresponse

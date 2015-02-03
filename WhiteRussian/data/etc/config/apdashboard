@@ -1,0 +1,2 @@
+config apdashboard
+	option url 'http://auth.ilesansfil.org/authpuppy/dashboard'

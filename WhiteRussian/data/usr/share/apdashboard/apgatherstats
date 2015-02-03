@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# Author: Philippe April <philippe@philippeapril.com>
+# Date: August 18, 2010
+
+DASHBOARD_URL=$(grep "option url" /etc/config/apdashboard | awk '{print $3}' | sed 's/"//g')
+DASHBOARD_HOST=$(echo $DASHBOARD_URL | awk -F/ '{print $3}')
+WAN_IF=$(netstat -rn | grep ^0.0.0.0 | awk '{print $NF}')
+
+echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+echo "<authpuppy_status version=\"1.0\">"
+
+if [ "`grep 'WHITE RUSSIAN' /etc/banner`" != "" ]; then
+  OPENWRT_RELEASE="WHITERUSSIAN"
+  LAN_IF="br0"
+elif [ "`grep 'KAMIKAZE' /etc/banner`" != "" ]; then
+  OPENWRT_RELEASE="KAMIKAZE"
+  LAN_IF="br-lan"
+else
+  OPENWRT_RELEASE="UNKNOWN"
+fi
+
+
+echo "<openwrt release=\"$OPENWRT_RELEASE\" version=\"$(cat /etc/openwrt_version)\" />"
+
+echo "<wireless ssid=\"$(nvram get wl0_ssid)\" channel=\"$(nvram get wl0_channel)\" />"
+
+echo "<ping_average>$(ping -q -c 3 $DASHBOARD_HOST | grep min/avg/max | awk -F= '{print $2}' | awk -F/ '{print $2}')</ping_average>"
+
+SYSTYPE=$(grep 'system type' /proc/cpuinfo | awk -F: '{print $2}' | sed 's/^ *//')
+SYSMODEL=$(grep 'cpu model' /proc/cpuinfo | awk -F: '{print $2}' | sed 's/^ *//')
+BOGOMIPS=$(grep 'BogoMIPS' /proc/cpuinfo | awk -F: '{print $2}' | sed 's/^ *//')
+MEMTOTAL=$(grep 'MemTotal' /proc/meminfo | awk -F: '{print $2}' | awk '{print $1}')
+MEMFREE=$(grep 'MemFree' /proc/meminfo | awk -F: '{print $2}' | awk '{print $1}')
+echo "<system type=\"$SYSTYPE\" cpu_model=\"$SYSMODEL\" bogomips=\"$BOGOMIPS\" boardrev=\"$(nvram get boardrev)\" boardtype=\"$(nvram get boardtype)\" boardflags=\"$(nvram get boardflags)\" boardflags2=\"$(nvram get boardflags2)\" memtotal=\"$MEMTOTAL\" memfree=\"$MEMFREE\" />"
+
+echo "<associated_macs>"
+for mac in `wl assoclist | sed 's/^assoclist //'`; do
+  echo "<mac>$mac</mac>"
+done
+echo "</associated_macs>"
+
+echo "<dhcp_leases>"
+cat /tmp/dhcp.leases | while read LINE
+do
+  timestamp=$(echo "$LINE" | awk '{print $1}')
+  mac=$(echo "$LINE" | awk '{print $2}' | sed 's/://g' | tr '[a-z]' '[A-Z]')
+  ip=$(echo "$LINE" | awk '{print $3}')
+  ident=$(echo "$LINE" | awk '{print $4}')
+  echo "<lease timestamp=\"$timestamp\" mac=\"$mac\" ip=\"$ip\" ident=\"$ident\" />"
+done
+echo "</dhcp_leases>"
+
+echo "<wifidog version=\"$(wifidog -v | awk '{print $NF}')\">"
+wdctl status | grep MAC: | while read LINE
+do
+  ip=`echo $LINE | awk '{print $2}'`
+  mac=`echo $LINE | awk '{print $4}' | sed 's/://g' | tr '[a-z]' '[A-Z]'`
+  echo "<client ip=\"$ip\" mac=\"$mac\" />"
+done
+echo "</wifidog>"
+
+echo "<network>"
+WAN_PROTO=$(nvram get wan_proto)
+WAN_IP=$(ifconfig $WAN_IF | grep 'inet addr' | sed 's/  Bcast.*//' | sed 's/.*inet addr:\(.*\).*/\1/')
+WAN_NETMASK=$(ifconfig $WAN_IF | grep 'inet addr' | sed 's/.*Mask:\(.*\).*/\1/')
+echo "<wan ip=\"$WAN_IP\" netmask=\"$WAN_NETMASK\" proto=\"$WAN_PROTO\" />"
+
+LAN_IP=$(ifconfig $LAN_IF | grep 'inet addr' | sed 's/  Bcast.*//' | sed 's/.*inet addr:\(.*\).*/\1/')
+LAN_NETMASK=$(ifconfig $LAN_IF | grep 'inet addr' | sed 's/.*Mask:\(.*\).*/\1/')
+echo "<lan ip=\"$LAN_IP\" netmask=\"$LAN_NETMASK\" />"
+echo "</network>"
+
+echo "</authpuppy_status>"
