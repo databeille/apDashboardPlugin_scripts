@@ -3,7 +3,7 @@
 # Author: Philippe April <philippe@philippeapril.com>
 # Date: August 18, 2010
 
-if [ "$(grep -l 'HTTP/1.0 200 OK' $1)" = "" ]; then
+if [ "$(grep '^HTTP/1.\w* 200 OK' $1)" = "" ]; then
   exit
 fi
 

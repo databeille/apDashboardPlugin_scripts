@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Author: Philippe April <philippe@philippeapril.com>
+# Date: August 18, 2010
+
+source /usr/share/apdashboard/apdashboardvars
+
+DATA=$(/usr/share/apdashboard/apgatherstats)
+LENGTH=$(echo $DATA | wc -c)
+
+if [ "$DASHBOARD_PROTO" = "https" ]
+	then
+		[ "$DASHBOARD_PORT" = "" ] && DASHBOARD_PORT="443"
+		COMMAND="openssl s_client -quiet -connect $DASHBOARD_HOST:$DASHBOARD_PORT"
+	else
+		[ "$DASHBOARD_PORT" = "" ] && DASHBOARD_PORT="80"
+		COMMAND="nc $DASHBOARD_HOST $DASHBOARD_PORT"
+fi
+eval $COMMAND > /tmp/apdashboardresponse << EOF
+POST $DASHBOARD_PATH HTTP/1.1
+Content-Type: text/xml; charset=utf-8
+Content-Length: $LENGTH
+Host: $DASHBOARD_HOST
+Connection: close
+
+$DATA
+EOF
+
+/usr/share/apdashboard/approcessresponse /tmp/apdashboardresponse
+#rm -f /tmp/apdashboardresponse
