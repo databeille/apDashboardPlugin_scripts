@@ -1,3 +1,9 @@
+### 2015-02-24
+
+  * Added cron data
+  * Added AGPLv3 license file to "Licenses" directory
+
+
 ### 2015-02-13
 
   * Added a better url parsing method in /usr/sbin/appushstats
