@@ -3,15 +3,22 @@
 # Author: Philippe April <philippe@philippeapril.com>
 # Date: August 18, 2010
 
+check_certs() {
+        #Check if ca certificates is installed
+        opkg list-installed | grep ca-certificates > /dev/null 2>&1
+        echo $?
+}
+
 source /usr/share/apdashboard/apdashboardvars
 
 DATA=$(/usr/share/apdashboard/apgatherstats)
 LENGTH=$(echo $DATA | wc -c)
 
 if [ "$DASHBOARD_PROTO" = "https" ]
-	then
-		[ "$DASHBOARD_PORT" = "" ] && DASHBOARD_PORT="443"
-		COMMAND="openssl s_client -quiet -connect $DASHBOARD_HOST:$DASHBOARD_PORT"
+        then
+                [ "$DASHBOARD_PORT" = "" ] && DASHBOARD_PORT="443"
+                COMMAND="openssl s_client -quiet -connect $DASHBOARD_HOST:$DASHBOARD_PORT"
+                [ $(check_certs) = 0 ] && COMMAND="$COMMAND -CApath /etc/ssl/certs"
 	else
 		[ "$DASHBOARD_PORT" = "" ] && DASHBOARD_PORT="80"
 		COMMAND="nc $DASHBOARD_HOST $DASHBOARD_PORT"

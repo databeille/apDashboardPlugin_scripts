@@ -1,3 +1,8 @@
+### 2015-03-28
+
+  * Added a ssl certs parameter to openssl if ca-certificates is present
+
+
 ### 2015-02-24
 
   * Added cron data
